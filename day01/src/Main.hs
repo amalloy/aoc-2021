@@ -3,33 +3,25 @@
 module Main where
 
 import Control.Arrow ((&&&))
+import Data.Array
 
-type Input = [Int]
+type Input = Array Int Int
 
--- >>> zip [] undefined
--- parse error on input ‘::’
--- []
-
--- prop> (\(xs :: [Int]) -> null xs || part1 xs >= 0)
--- +++ OK, passed 100 tests.
-
-numIncreasingPairwise :: (Num a, Ord a) => [a] -> Int
-numIncreasingPairwise xs = length . filter (< 0) $ zipWith (-) xs (tail xs)
+numIncreasingDiffsOfSize :: Int -> Array Int Int -> Int
+numIncreasingDiffsOfSize delta a = length [() | i <- indices, get (i + delta) > get i]
+  where get = (a !)
+        indices = [lo..hi - delta]
+          where (lo, hi) = bounds a
 
 part1 :: Input -> Int
-part1 = numIncreasingPairwise
-
-data Three a = Three a a a deriving (Foldable, Show)
-
-threeWindows :: [a] -> [Three a]
-threeWindows xs@(_:ys@(_:zs)) = zipWith3 Three xs ys zs
-threeWindows _ = []
+part1 = numIncreasingDiffsOfSize 1
 
 part2 :: Input -> Int
-part2 = numIncreasingPairwise . map sum . threeWindows
+part2 = numIncreasingDiffsOfSize 3
 
 prepare :: String -> Input
-prepare = map read . lines
+prepare = toArray . map read . lines
+  where toArray xs = listArray (0, length xs - 1) xs
 
 main :: IO ()
 main = interact $ show . (part1 &&& part2) . prepare
