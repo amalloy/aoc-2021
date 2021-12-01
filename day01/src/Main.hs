@@ -32,4 +32,4 @@ prepare :: String -> Input
 prepare = map read . lines
 
 main :: IO ()
-main = readFile "input.txt" >>= print . (part1 &&& part2) . prepare
+main = interact $ show . (part1 &&& part2) . prepare
