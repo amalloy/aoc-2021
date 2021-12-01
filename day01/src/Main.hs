@@ -26,6 +26,7 @@ data Three a = Three a a a deriving (Foldable, Show)
 
 threeWindows :: [a] -> [Three a]
 threeWindows xs@(_:ys@(_:zs)) = zipWith3 Three xs ys zs
+threeWindows _ = []
 
 part2 :: Input -> Int
 part2 = numIncreasingPairwise . map sum . threeWindows
