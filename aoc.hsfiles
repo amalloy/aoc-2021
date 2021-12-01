@@ -29,6 +29,7 @@ executable {{name}}
                      , lens
                      , mtl
                      , transformers
+                     , QuickCheck
 
 {-# START_FILE Setup.hs #-}
 import Distribution.Simple

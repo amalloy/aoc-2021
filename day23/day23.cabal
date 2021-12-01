@@ -28,3 +28,4 @@ executable day23
                      , lens
                      , mtl
                      , transformers
+                     , QuickCheck
