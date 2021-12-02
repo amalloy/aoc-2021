@@ -2,6 +2,10 @@ module Main where
 
 import Control.Arrow ((&&&))
 import Data.List (foldl')
+import Text.Regex.Applicative
+import Text.Regex.Applicative.Common (digit, decimal)
+import Data.Maybe (fromMaybe)
+import Data.Functor (($>))
 
 data Direction = Up | Down | Forward deriving Show
 data Motion = Motion Direction Int deriving Show
@@ -32,12 +36,11 @@ part2 :: Input -> Int
 part2 = ((*) <$> d <*> x) . foldl' angle (Missile 0 0 0)
 
 prepare :: String -> Input
-prepare = map (parse . words) . lines
-  where parse [dir, n] = Motion d (read n)
-          where d = case dir of
-                      "down" -> Down
-                      "up" -> Up
-                      "forward" -> Forward
+prepare = fromMaybe [] . traverse (=~ r) . lines
+  where r = Motion <$> dir <*> (many (sym ' ') *> decimal)
+        dir = string "down" $> Down
+          <|> string "up" $> Up
+          <|> string "forward" $> Forward
 
 main :: IO ()
 main = readFile "input.txt" >>= print . (part1 &&& part2) . prepare
