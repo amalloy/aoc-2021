@@ -19,8 +19,13 @@ asNumber = foldl' go 0
 
 bitCounts :: [Bit] -> Freq
 bitCounts = foldMap toFreq
-  where toFreq Zero = Freq 0 1
-        toFreq One = Freq 1 0
+
+toFreq :: Bit -> Freq
+toFreq Zero = Freq 0 1
+toFreq One = Freq 1 0
+
+mkBit True = One
+mkBit False = Zero
 
 type Input = [[Bit]]
 
@@ -30,11 +35,24 @@ part1 nums = (*) <$> epsilon <*> gamma $ map bitCounts (transpose nums)
         gamma = mkNumber (not . isEpsilon)
         isEpsilon freq = ones freq > zeroes freq
         mkNumber sel freqs = asNumber (map (mkBit . sel) freqs)
-        mkBit True = One
-        mkBit False = Zero
 
-part2 :: Input -> ()
-part2 = const ()
+scrubber :: (Int -> Int -> Bool) -> [[Bit]] -> Int
+scrubber op = asNumber . go
+  where go [bits] = bits
+        go nums = let freq = foldMap (toFreq . head) nums
+                      keepOne = ones freq `op` zeroes freq
+                      remainder | keepOne = map tail . filter ((== One) . head) $ nums
+                                | otherwise = map tail . filter ((/= One) . head) $ nums
+                  in mkBit keepOne : go remainder
+
+oxygenScrub :: [[Bit]] -> Int
+oxygenScrub = scrubber (>=)
+
+co2Scrub :: [[Bit]] -> Int
+co2Scrub = scrubber (<)
+
+part2 :: Input -> Int
+part2 = (*) <$> oxygenScrub <*> co2Scrub
 
 prepare :: String -> Input
 prepare = map (map toBit) . lines
