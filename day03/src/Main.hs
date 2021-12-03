@@ -6,8 +6,8 @@ import Data.List (transpose, foldl')
 import Control.Arrow ((&&&))
 
 data Bit = Zero | One deriving (Eq, Ord, Show, Enum)
-
 data Freq = Freq { ones, zeroes :: Int } deriving Show
+
 instance Semigroup Freq where
   Freq o z <> Freq p x = Freq (o + p) (z + x)
 instance Monoid Freq where
@@ -41,8 +41,9 @@ scrubber op = asNumber . go
   where go [bits] = bits
         go nums = let freq = foldMap (toFreq . head) nums
                       keepOne = ones freq `op` zeroes freq
-                      remainder | keepOne = map tail . filter ((== One) . head) $ nums
-                                | otherwise = map tail . filter ((/= One) . head) $ nums
+                      remainder | keepOne = keep One
+                                | otherwise = keep Zero
+                      keep x = map tail . filter ((== x) . head) $ nums
                   in mkBit keepOne : go remainder
 
 oxygenScrub :: [[Bit]] -> Int
