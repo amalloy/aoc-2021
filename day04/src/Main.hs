@@ -23,7 +23,7 @@ data State = State {_lastCalled :: Int, _boards :: [Board (Maybe Int)]} deriving
 
 type Regex a = RE Char a
 
-sepBy :: Regex a -> Regex b -> Regex [a]
+sepBy :: Alternative f => f a -> f b -> f [a]
 p `sepBy` delim = (:) <$> p <*> many (delim *> p)
 
 numbers :: Regex [Int]
