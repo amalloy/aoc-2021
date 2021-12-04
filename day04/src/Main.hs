@@ -1,4 +1,4 @@
-{-# LANGUAGE ApplicativeDo, DeriveFunctor, DeriveFoldable #-}
+{-# LANGUAGE ApplicativeDo, DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 
 module Main where
 
@@ -10,12 +10,10 @@ import Data.Maybe (fromJust, isNothing, catMaybes)
 import Data.Foldable (toList)
 import Data.Char (isSpace)
 
-data Five a = Five a a a a a deriving (Foldable, Functor, Show)
+data Five a = Five a a a a a deriving (Foldable, Functor, Traversable, Show)
 instance Applicative Five where
   pure x = Five x x x x x
   Five fa fb fc fd fe <*> Five a b c d e = Five (fa a) (fb b) (fc c) (fd d) (fe e)
-instance Traversable Five where
-  sequenceA (Five fa fb fc fd fe) = Five <$> fa <*> fb <*> fc <*> fd <*> fe
 newtype Board a = Board (Five (Five a)) deriving (Show, Functor, Foldable)
 
 data Input = Input [Int] [Board Int] deriving Show
