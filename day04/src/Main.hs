@@ -50,19 +50,24 @@ winner (Board b) = any (all isNothing) b || any (all isNothing) (sequenceA b)
 states :: Input -> [State]
 states (Input nums boards) = go nums (fmap (fmap Just) boards)
   where go [] _ = []
-        go (n:ns) boards = State n boards' : go ns boards'
+        go (n:ns) boards = State n boards' : go ns (filter (not . winner) boards')
           where boards' = mark n <$> boards
+
+score :: Num a => a -> Board (Maybe a) -> a
+score n b = n * (sum . catMaybes . toList $ b)
 
 part1 :: Input -> Int
 part1 = go . states
   where go [] = error "no winner"
         go (State n bs : ss) = case filter winner bs of
           [] -> go ss
-          b : _ -> n * (sum . catMaybes . toList $ b)
+          b : _ -> score n b
 
-
-part2 :: Input -> ()
-part2 = const ()
+part2 :: Input -> Int
+part2 = go . states
+  where go (State n [b] : _) | winner b = score n b
+        go (_ : ss) = go ss
+        go [] = error "no winner"
 
 prepare :: String -> Input
 prepare = fromJust . (=~ input)
