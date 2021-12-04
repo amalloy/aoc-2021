@@ -38,9 +38,9 @@ input :: Regex Input
 input = Input <$> numbers <*> many (sym '\n' *> board) <* many (psym isSpace)
 
 mark :: Eq a => a -> Board (Maybe a) -> Board (Maybe a)
-mark x = fmap (erase (Just x))
-  where erase x y | x == y = Nothing
-                  | otherwise = y
+mark x = fmap erase
+  where erase (Just y) | x == y = Nothing
+        erase y = y
 
 winner :: Board (Maybe a) -> Bool
 winner (Board b) = winningRow b || winningRow (sequenceA b)
