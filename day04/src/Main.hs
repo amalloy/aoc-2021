@@ -27,7 +27,7 @@ p `sepBy` delim = (:) <$> p <*> many (delim *> p)
 numbers :: Regex [Int]
 numbers = decimal `sepBy` sym ','
 
-fiveTimes :: Regex a -> Regex (Five a)
+fiveTimes :: Applicative f => f a -> f (Five a)
 fiveTimes p = Five <$> p <*> p <*> p <*> p <*> p
 
 board :: Regex (Board Int)
