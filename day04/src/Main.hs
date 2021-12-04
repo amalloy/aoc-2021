@@ -43,7 +43,8 @@ mark x = fmap (erase (Just x))
                   | otherwise = y
 
 winner :: Board (Maybe a) -> Bool
-winner (Board b) = any (all isNothing) b || any (all isNothing) (sequenceA b)
+winner (Board b) = winningRow b || winningRow (sequenceA b)
+  where winningRow = any (all isNothing)
 
 states :: Input -> [State]
 states (Input nums boards) = go nums (fmap (fmap Just) boards)
