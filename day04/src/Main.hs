@@ -47,9 +47,8 @@ winner (Board b) = winningRow b || winningRow (sequenceA b)
   where winningRow = any (all isNothing)
 
 states :: Input -> [State]
-states (Input nums boards) = go nums (fmap (fmap Just) boards)
-  where go [] _ = []
-        go (n:ns) boards = State n boards' : go ns (filter (not . winner) boards')
+states (Input nums boards) = foldr go (const []) nums (fmap (fmap Just) boards)
+  where go n acc boards = State n boards' : acc (filter (not . winner) boards')
           where boards' = mark n <$> boards
 
 score :: Num a => a -> Board (Maybe a) -> a
