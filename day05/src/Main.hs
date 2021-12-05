@@ -51,7 +51,7 @@ countOverlaps :: Foldable f => f [a] -> Int
 countOverlaps = length . filter ((> 1) . length) . toList
 
 part1 :: Input -> Int
-part1 = countOverlaps . importLines (const mempty)
+part1 = countOverlaps . importLines mempty
 
 pointsOnDiagonal :: Line -> [Coord]
 pointsOnDiagonal (Line start@(x1, y1) (x2, y2)) =
