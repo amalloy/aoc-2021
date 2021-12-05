@@ -31,10 +31,11 @@ orientation (Line (x1, y1) (x2, y2)) | x1 == x2 = Vertical
                                      | y1 == y2 = Horizontal
                                      | otherwise = Diagonal
 
-importOrthoganalLines :: [Line] -> Grid [Line]
-importOrthoganalLines = foldl' addToGrid M.empty
+importLines :: (Line -> [Coord]) -> [Line] -> Grid [Line]
+importLines diagHandler = foldl' addToGrid M.empty
   where addToGrid m line = case orientation line of
-          Diagonal -> m
+          Diagonal -> foldl' addPoint m (diagHandler line)
+            where addPoint m coord = M.insertWith (<>) coord [line] m
           Vertical -> let Line (x, y1) (_, y2) = line
                           from = min y1 y2
                           to = max y1 y2
@@ -50,7 +51,7 @@ countOverlaps :: Foldable f => f [a] -> Int
 countOverlaps = length . filter ((> 1) . length) . toList
 
 part1 :: Input -> Int
-part1 = countOverlaps . importOrthoganalLines
+part1 = countOverlaps . importLines (const mempty)
 
 part2 :: Input -> ()
 part2 = const ()
