@@ -53,8 +53,15 @@ countOverlaps = length . filter ((> 1) . length) . toList
 part1 :: Input -> Int
 part1 = countOverlaps . importLines (const mempty)
 
-part2 :: Input -> ()
-part2 = const ()
+pointsOnDiagonal :: Line -> [Coord]
+pointsOnDiagonal (Line start@(x1, y1) (x2, y2)) =
+  let len = abs (x1 - x2)
+      (dx, dy) = (signum (x2 - x1), signum (y2 - y1))
+      move (x, y) = (x + dx, y + dy)
+  in take (len + 1) (iterate move start)
+
+part2 :: Input -> Int
+part2 = countOverlaps . importLines pointsOnDiagonal
 
 prepare :: String -> Input
 prepare = fromMaybe [] . (=~ input)
