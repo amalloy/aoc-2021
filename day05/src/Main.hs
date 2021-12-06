@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
+
 module Main where
 
 import Control.Arrow ((&&&))
@@ -7,13 +10,17 @@ import Data.Maybe (fromMaybe)
 import Text.Regex.Applicative
 import Text.Regex.Applicative.Common (decimal)
 
-data Line = Line { _from, _to :: Coord } deriving (Show, Eq, Ord)
-type Coord = (Int, Int)
+data Line = Line { _from, _to :: Coord Int } deriving Show
+data Coord a = Coord { _x, _y :: a }
+  deriving (Show, Eq, Ord, Functor, Foldable)
+instance Applicative Coord where
+  pure x = Coord x x
+  Coord fx fy <*> Coord x y = Coord (fx x) (fy y)
 
 type Regex a = RE Char a
 
-coord :: Regex Coord
-coord = (,) <$> decimal <* sym ',' <*> decimal
+coord :: Regex (Coord Int)
+coord = Coord <$> decimal <* sym ',' <*> decimal
 
 line :: Regex Line
 line = Line <$> coord <* string " -> " <*> coord <* sym '\n'
@@ -24,16 +31,17 @@ input = many line
 type Input = [Line]
 
 diagonal :: Line -> Bool
-diagonal (Line (x1, y1) (x2, y2)) = abs (x1 - x2) == abs (y1 - y2)
+diagonal (Line from to) = not . any (== 0) $ abs <$> liftA2 (-) to from
 
-pointsOnLine :: Line -> [Coord]
-pointsOnLine (Line from@(x1, y1) (x2, y2)) =
-  let len = 1 + max (abs (x1 - x2)) (abs (y1 - y2))
-      (dx, dy) = (signum (x2 - x1), signum (y2 - y1))
-      move (x, y) = (x + dx, y + dy)
+pointsOnLine :: Line -> [Coord Int]
+pointsOnLine (Line from to) =
+  let vector = liftA2 (-) to from
+      len = 1 + maximum (abs <$> vector)
+      unit = signum <$> vector
+      move = liftA2 (+) unit
   in take len $ iterate move from
 
-importLines :: [Line] -> M.Map Coord Int
+importLines :: [Line] -> M.Map (Coord Int) Int
 importLines = foldl' add M.empty . (>>= pointsOnLine)
   where add m k = M.insertWith (+) k 1 m
 
