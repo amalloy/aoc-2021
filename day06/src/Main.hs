@@ -9,7 +9,7 @@ import Data.Maybe (fromMaybe)
 import Text.Regex.Applicative
 import Text.Regex.Applicative.Common (decimal)
 
-newtype Age = Age Int deriving (Num, Eq, Ord, Show)
+newtype Age = Age Int deriving (Num, Eq, Ord, Show, Enum)
 newtype Count = Count Integer deriving (Num, Show)
 type School = M.Map Age Count
 type Input = School
@@ -18,7 +18,7 @@ type Regex a = RE Char a
 step :: School -> School
 step s = M.unionWith (+) aging born
   where aging = M.fromList $ do
-          prevAge <- Age <$> [1..8]
+          prevAge <- [1..8]
           pure (prevAge - 1, get prevAge)
         born = let num = get 0
           in M.fromList [(6, num), (8, num)]
