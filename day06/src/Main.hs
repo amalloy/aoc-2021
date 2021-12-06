@@ -37,7 +37,7 @@ extraCredit :: Input -> Count
 extraCredit = simulate 1000
 
 ages :: Regex [Age]
-ages = fmap (fmap Age) $ (:) <$> decimal <*> (many (sym ',' *> decimal))
+ages = liftA2 (:) decimal (many (sym ',' *> decimal))
 
 prepare :: String -> Input
 prepare s = M.fromListWith (+) $ do
