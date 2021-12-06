@@ -10,7 +10,7 @@ import Text.Regex.Applicative
 import Text.Regex.Applicative.Common (decimal)
 
 newtype Age = Age Int deriving (Num, Eq, Ord, Show)
-newtype Count = Count Int deriving (Num, Show)
+newtype Count = Count Integer deriving (Num, Show)
 type School = M.Map Age Count
 type Input = School
 type Regex a = RE Char a
@@ -33,6 +33,9 @@ part1 = simulate 80
 part2 :: Input -> Count
 part2 = simulate 256
 
+extraCredit :: Input -> Count
+extraCredit = simulate 1000
+
 ages :: Regex [Age]
 ages = fmap (fmap Age) $ (:) <$> decimal <*> (many (sym ',' *> decimal))
 
@@ -42,4 +45,4 @@ prepare s = M.fromListWith (+) $ do
   pure (age, 1)
 
 main :: IO ()
-main = readFile "input.txt" >>= print . (part1 &&& part2) . prepare
+main = readFile "input.txt" >>= print . (part1 &&& part2 &&& extraCredit) . prepare
