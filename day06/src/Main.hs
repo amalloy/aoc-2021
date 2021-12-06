@@ -24,11 +24,14 @@ step s = M.unionWith (+) aging born
           in M.fromList [(6, num), (8, num)]
         get k = M.findWithDefault 0 k s
 
-part1 :: Input -> Count
-part1 = sum . (!! 80) . iterate step
+simulate :: Int -> Input -> Count
+simulate numDays = sum . (!! numDays) . iterate step
 
-part2 :: Input -> ()
-part2 = const ()
+part1 :: Input -> Count
+part1 = simulate 80
+
+part2 :: Input -> Count
+part2 = simulate 256
 
 ages :: Regex [Age]
 ages = fmap (fmap Age) $ (:) <$> decimal <*> (many (sym ',' *> decimal))
