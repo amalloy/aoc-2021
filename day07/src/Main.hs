@@ -1,36 +1,32 @@
 module Main where
 
 import Control.Arrow ((&&&))
-import Data.List (sort)
+import Data.Coerce (coerce)
+import Data.List.NonEmpty (NonEmpty(..), nonEmpty)
 import Data.Maybe (fromMaybe)
-import qualified Data.Sequence as S
+import Data.Semigroup (Min(..), Max(..))
 import Text.Regex.Applicative
 import Text.Regex.Applicative.Common (decimal)
 
-type Input = S.Seq Int
+data Input = Input {_min, _max :: Int, _crabs :: NonEmpty Int}
 
-median :: S.Seq a -> Maybe a
-median xs = S.lookup (S.length xs `div` 2) xs
+solve :: (Int -> Int) -> Input -> Int
+solve cost (Input min max crabs) = minimum $ do
+    pos <- [min..max]
+    pure . sum . fmap (cost . abs . (pos -)) $ crabs
 
-part1 :: Input -> Maybe Int
-part1 input = do
-  med <- median input
-  pure . sum . fmap (abs . (subtract med)) $ input
-
-cost :: Int -> Int -> Int
-cost from to = let n = (abs $ from - to)
-               in n * (n + 1) `div` 2
+part1 :: Input -> Int
+part1 = solve abs
 
 part2 :: Input -> Int
-part2 crabs = case (S.viewl crabs, S.viewr crabs) of
-  (lo S.:< _, _ S.:> hi) -> minimum $ do
-    pos <- [lo..hi]
-    pure . sum . fmap (cost pos) $ crabs
-  _ -> 0
+part2 = solve cost
+  where cost n = n * (n + 1) `div` 2
 
-prepare :: String -> Input
-prepare = S.fromList . sort . fromMaybe [] . (=~ input)
-  where input = many (decimal <* anySym)
+prepare :: String -> Maybe Input
+prepare = mkCrabs . fromMaybe [] . (=~ input)
+  where mkCrabs input = let (min, max) = coerce $ foldMap (Just . Min &&& Just . Max) input
+                        in liftA3 Input min max (nonEmpty input)
+        input = many (decimal <* anySym)
 
 main :: IO ()
-main = readFile "input.txt" >>= print . (part1 &&& part2) . prepare
+main = readFile "input.txt" >>= print . maybe (0, 0) (part1 &&& part2) . prepare
