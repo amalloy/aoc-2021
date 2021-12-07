@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, ApplicativeDo #-}
 
 module Main where
 
@@ -14,6 +14,25 @@ newtype Count = Count Integer deriving (Num, Show)
 type School = M.Map Age Count
 type Input = School
 type Regex a = RE Char a
+
+-- M = Matrix _
+-- V = today's fish
+-- V * M = tomorrow's fish
+-- V * (M * M) = two days from now's fish
+-- V * (M * M * M) = three days from now's fish
+-- ...
+-- V * (M ^ 256) = solution to part 2
+
+newtype Matrix a = Matrix (ZipList (ZipList a))
+
+mul :: Num a => Matrix a -> Matrix a -> Matrix a
+mul (Matrix a) (Matrix b) =
+  let cols = sequenceA b
+  in Matrix $ do
+    row <- a
+    pure $ do
+      col <- cols
+      pure (sum (liftA2 (*) row col))
 
 step :: School -> School
 step s = M.unionWith (+) aging born
