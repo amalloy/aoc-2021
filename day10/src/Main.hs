@@ -1,6 +1,7 @@
 module Main where
 
 import Control.Arrow ((&&&))
+import Data.List (foldl', sort)
 import Data.Maybe (mapMaybe)
 
 data Closer = Closer { _opener :: Char, _score :: Int } deriving Show
@@ -32,8 +33,18 @@ part1 = sum . mapMaybe (getScore . corruptedScore)
   where getScore (Corrupted n) = Just n
         getScore _ = Nothing
 
-part2 :: Input -> ()
-part2 = const ()
+part2 :: Input -> Int
+part2 = middle . sort . mapMaybe (getScore . corruptedScore)
+  where getScore (Incomplete xs) = Just $ foldl' accum 0 xs
+        getScore _ = Nothing
+        accum acc c = 5 * acc + score c
+        score '(' = 1
+        score '[' = 2
+        score '{' = 3
+        score '<' = 4
+        middle [x] = x
+        middle [] = error "even length"
+        middle xs = middle (tail . init $ xs)
 
 prepare :: String -> Input
 prepare = lines
