@@ -5,7 +5,7 @@ import Prelude hiding (head, tail, last)
 import Control.Arrow ((&&&))
 import Control.Monad (guard)
 import Data.Char (isUpper)
-import Data.List.NonEmpty hiding (filter, length)
+import Data.List.NonEmpty hiding (filter, length, map)
 import Data.Maybe (fromMaybe, maybeToList)
 
 import Text.Regex.Applicative
@@ -15,6 +15,7 @@ import qualified Data.Set as S
 data Size = Big | Small deriving (Eq, Show)
 newtype Cave = Cave (NonEmpty Char) deriving (Eq, Ord, Show)
 data Path = Path Cave Cave deriving Show
+data CheatMode = CheatingAllowed | NoCheating deriving Eq
 type Input = [Path]
 
 start, end :: Cave
@@ -30,16 +31,19 @@ dest c (Path a b) | c == a = Just b
                   | c == b = Just a
                   | otherwise = Nothing
 
-allRoutes :: [Path] -> [NonEmpty Cave]
-allRoutes paths = filter ((== end) . last) $ (start :|) <$> go (S.singleton start) start
-  where go visited curr = pure [] <> do
+allRoutes :: CheatMode -> [Path] -> [NonEmpty Cave]
+allRoutes cm paths = filter ((== end) . last) . map (start :|) $ go S.empty start cm
+  where go visited curr cheatMode = pure [] <> do
+          guard $ curr /= end
           p <- paths
           to <- maybeToList (dest curr p)
-          let valid = case size to of
-                Big -> size curr == Small
-                Small -> not $ S.member to visited
+          guard $ to /= start
+          let (valid, cheatMode') = case (size to, S.member to visited, cheatMode) of
+                (Big, _, cm) -> (size curr == Small, cm)
+                (Small, False, cm) -> (True, cm)
+                (Small, True, cm) -> (cm == CheatingAllowed, NoCheating)
           guard valid
-          (to :) <$> go (S.insert to visited) to
+          (to :) <$> go (S.insert to visited) to cheatMode'
 
 type Regex a = RE Char a
 
@@ -50,10 +54,10 @@ path = Path <$> cave <* sym '-' <*> cave
         labelChar = psym (/= '-')
 
 part1 :: Input -> Int
-part1 = length . allRoutes
+part1 = length . allRoutes NoCheating
 
-part2 :: Input -> ()
-part2 = const ()
+part2 :: Input -> Int
+part2 = length . allRoutes CheatingAllowed
 
 prepare :: String -> Input
 prepare = fromMaybe [] . traverse (=~ path) . lines
