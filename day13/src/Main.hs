@@ -1,6 +1,7 @@
 module Main where
 
 import Control.Arrow ((&&&))
+import Data.List (foldl', intercalate)
 import Data.Maybe (fromMaybe)
 
 import Text.Regex.Applicative
@@ -25,8 +26,15 @@ fold f = S.map (transform f)
 part1 :: Input -> Int
 part1 (Input p (f:_)) = S.size (fold f p)
 
-part2 :: Input -> ()
-part2 = const ()
+part2 :: Input -> String
+part2 (Input p fs) = let maxY = last [y | Y := y <- fs]
+                         maxX = last [x | X := x <- fs]
+                         p' = foldl' (flip fold) p fs
+                     in intercalate "\n" $ do
+  y <- [0..maxY]
+  pure $ do
+    x <- [0..maxX]
+    pure $ if S.member (Point x y) p' then '#' else '.'
 
 prepare :: String -> Input
 prepare = fromMaybe (Input mempty mempty) . (=~ input)
@@ -38,4 +46,7 @@ prepare = fromMaybe (Input mempty mempty) . (=~ input)
         point = Point <$> decimal <* sym ',' <*> decimal <* sym '\n'
 
 main :: IO ()
-main = readFile "input.txt" >>= print . (part1 &&& part2) . prepare
+main = do
+  input <- prepare <$> readFile "input.txt"
+  print $ part1 input
+  putStrLn $ part2 input
