@@ -54,8 +54,14 @@ part1 = runCave 100 0
           (c', fs) <- step c
           runCave (steps - 1) (fs + flashes) c'
 
-part2 :: Input -> Reader Parameters ()
-part2 i = pure ()
+part2 :: Input -> Reader Parameters Int
+part2 cave = go cave
+  where n = (rangeSize (bounds cave))
+        go c = do
+          (c', f) <- step c
+          if f == n
+            then pure 1
+            else succ <$> go c'
 
 prepare :: String -> Input
 prepare s = let rows = lines s
