@@ -2,15 +2,12 @@
 
 module Main where
 
-import Control.Arrow ((&&&))
 import Data.List (foldl', intercalate)
 import Data.Maybe (fromMaybe)
 
-import Control.Lens hiding (Fold)
-
+import Control.Lens (makeLenses, over)
 import Text.Regex.Applicative
 import Text.Regex.Applicative.Common (decimal)
-
 import qualified Data.Set as S
 
 data Point = Point { _x, _y :: Int } deriving (Eq, Ord, Show)
