@@ -7,6 +7,8 @@ import Data.Char (digitToInt)
 data Octopus = Exhausted | Energized | Latent Int deriving (Eq, Show)
 type Cave = Array (Int, Int) Octopus
 
+type Input = Cave
+
 addEnergy :: Int -> Octopus -> Octopus
 addEnergy a o = case o of
   Latent b | a + b >= 10 -> Energized
@@ -39,8 +41,6 @@ neighbors (x, y) = do
   dx <- [0, 1, -1]
   dy <- [0, 1, -1]
   pure (x + dx, y + dy)
-
-type Input = Cave
 
 part1 :: Input -> Int
 part1 = runCave 100 0
