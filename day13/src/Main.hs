@@ -35,7 +35,7 @@ part2 (Input p fs) = let maxY = last [y | Y := y <- fs]
   y <- [0..maxY]
   pure $ do
     x <- [0..maxX]
-    pure $ if S.member (Point x y) p' then '#' else '.'
+    pure $ if S.member (Point x y) p' then '#' else ' '
 
 prepare :: String -> Input
 prepare = fromMaybe (Input mempty mempty) . (=~ input)
