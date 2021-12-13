@@ -1,8 +1,12 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Main where
 
 import Control.Arrow ((&&&))
 import Data.List (foldl', intercalate)
 import Data.Maybe (fromMaybe)
+
+import Control.Lens hiding (Fold)
 
 import Text.Regex.Applicative
 import Text.Regex.Applicative.Common (decimal)
@@ -13,15 +17,15 @@ data Point = Point { _x, _y :: Int } deriving (Eq, Ord, Show)
 data Axis = X | Y
 data Fold = Axis := Int
 type Paper = S.Set Point
+makeLenses ''Point
 
 data Input = Input Paper [Fold]
 
 fold :: Fold -> Paper -> Paper
-fold f = S.map (transform f)
-  where transform (X := i) p@(Point x y) | x < i = p
-                                         | otherwise = Point (i - (x - i)) y
-        transform (Y := i) p@(Point x y) | y < i = p
-                                         | otherwise = Point x (i - (y - i))
+fold (axis := center) = S.map (over (field axis) reflect)
+  where field X = x
+        field Y = y
+        reflect coord = center - (abs (coord - center))
 
 part1 :: Input -> Int
 part1 (Input p (f:_)) = S.size (fold f p)
