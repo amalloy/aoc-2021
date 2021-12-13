@@ -1,43 +1,38 @@
 module Main where
 
-import Control.Monad.Reader
+import Control.Arrow ((&&&))
 import Data.Array
 import Data.Char (digitToInt)
 
-data Parameters = Parameters ()
 data Octopus = Exhausted | Energized | Latent Int deriving (Eq, Show)
 type Cave = Array (Int, Int) Octopus
 
-addEnergy :: Int -> Octopus -> Reader Parameters Octopus
-addEnergy a o = pure $ case o of
+addEnergy :: Int -> Octopus -> Octopus
+addEnergy a o = case o of
   Latent b | a + b >= 10 -> Energized
            | otherwise -> Latent (a + b)
   _ -> o
 
-step :: Cave -> Reader Parameters (Cave, Int)
-step c = do
-  c' <- traverse (addEnergy 1) c
-  completed <- complete c'
-  let numFlashes = length . filter (== Exhausted) . elems $ completed
-      c'' = fmap revitalize completed
-  pure (c'', numFlashes)
+step :: Cave -> (Cave, Int)
+step c = let c' = fmap (addEnergy 1) c
+             completed = complete c'
+             numFlashes = length . filter (== Exhausted) . elems $ completed
+             c'' = fmap revitalize completed
+         in (c'', numFlashes)
   where revitalize Exhausted = Latent 0
         revitalize x = x
 
-complete :: Cave -> Reader Parameters Cave
-complete c = do
-  let energized = [i | (i, Energized) <- assocs c]
-  case energized of
-    [] -> pure c
-    _ -> do
-      params <- ask
+complete :: Cave -> Cave
+complete c =
+  case [i | (i, Energized) <- assocs c] of
+    [] -> c
+    energized ->
       let bs = bounds c
           recipients = filter (inRange bs) $ neighbors =<< energized
-          collateral = [(i, addEnergy') | i <- recipients]
-          addEnergy' o = runReader (addEnergy 1 o) params
+          collateral = [(i, addEnergy 1) | i <- recipients]
           changes = [(i, const Exhausted) | i <- energized] ++ collateral
           c' = accum (\o f -> f o) c changes
-      complete c'
+      in complete c'
 
 neighbors :: (Int, Int) -> [(Int, Int)]
 neighbors (x, y) = do
@@ -47,21 +42,18 @@ neighbors (x, y) = do
 
 type Input = Cave
 
-part1 :: Input -> Reader Parameters Int
+part1 :: Input -> Int
 part1 = runCave 100 0
-  where runCave 0 flashes _ = pure flashes
-        runCave steps flashes c = do
-          (c', fs) <- step c
-          runCave (steps - 1) (fs + flashes) c'
+  where runCave 0 flashes _ = flashes
+        runCave steps flashes c = runCave (steps - 1) (fs + flashes) c'
+          where (c', fs) = step c
 
-part2 :: Input -> Reader Parameters Int
+part2 :: Input -> Int
 part2 cave = go cave
-  where n = (rangeSize (bounds cave))
-        go c = do
-          (c', f) <- step c
-          if f == n
-            then pure 1
-            else succ <$> go c'
+  where n = rangeSize $ bounds cave
+        go c = case step c of
+          (c', f) | f == n -> 1
+                  | otherwise -> succ $ go c'
 
 prepare :: String -> Input
 prepare s = let rows = lines s
@@ -70,7 +62,4 @@ prepare s = let rows = lines s
             in listArray bounds octopi
 
 main :: IO ()
-main = do
-  input <- prepare <$> readFile "input.txt"
-  print (runReader (part1 input) (Parameters ()))
-  print (runReader (part2 input) (Parameters ()))
+main = readFile "input.txt" >>= print . (part1 &&& part2) . prepare
