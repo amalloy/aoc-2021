@@ -12,7 +12,7 @@ data Pair a = Pair a a deriving (Eq, Ord, Show)
 data Rule a = Rule (Pair a) a deriving (Show)
 
 type Polymer a = M.Map (Pair a) Int
-data Input = Input (Polymer Element) [Rule Element] deriving Show
+data Input = Input (Polymer Element) (Pair Element -> Element)
 
 part1 :: Input -> ()
 part1 = const ()
@@ -21,9 +21,11 @@ part2 :: Input -> ()
 part2 = const ()
 
 prepare :: String -> Input
-prepare = fromMaybe (Input mempty mempty) . (=~ input)
-  where input = Input <$> polymer <* string "\n\n" <*> many rule
+prepare = fromMaybe (Input mempty undefined) . (=~ input)
+  where input = Input <$> polymer <* string "\n\n" <*> transition
         element = Element <$> psym isUpper
+        transition = mkTransition <$> many rule
+          where mkTransition rules = ((M.fromList [(p, e) | (Rule p e) <- rules]) M.!)
         rule = Rule <$> pair <* string " -> " <*> element <* sym '\n'
         pair = Pair <$> element <*> element
         polymer = mkPolymer <$> many element
