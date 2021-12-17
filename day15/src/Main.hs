@@ -56,8 +56,17 @@ type Input = Array Coord Risk
 part1 :: Input -> Risk
 part1 = lowestRisk
 
-part2 :: Input -> ()
-part2 = const ()
+expand :: Array Coord Risk -> Array Coord Risk
+expand a = array (Coord 1 1, Coord (w * 5) (h * 5)) $ do
+  (Coord x y, Risk r) <- A.assocs a
+  dx <- [0..4]
+  dy <- [0..4]
+  pure (Coord (x + (w * dx)) (y + (w * dy)), Risk . nineWrap $ r + dx + dy)
+  where (Coord 1 1, Coord w h) = bounds a
+        nineWrap n = ((n - 1) `mod` 9) + 1
+
+part2 :: Input -> Risk
+part2 = lowestRisk . expand
 
 prepare :: String -> Input
 prepare input = let ls = lines input
