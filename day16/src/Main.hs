@@ -33,8 +33,11 @@ packet = label (Packet <$> versioned packetContents) "packet"
 versioned :: Parser a -> Parser (Versioned a)
 versioned p = Versioned <$> versionId <*> p
 
+fixedWidthBinary :: Int -> Parser Int
+fixedWidthBinary n = fromBinary <$> replicateM n bit
+
 threeBit :: (Int -> a) -> Parser a
-threeBit f = label (f . fromBinary <$> replicateM 3 bit) "three bits"
+threeBit f = label (f <$> fixedWidthBinary 3) "three bits"
 
 versionId :: Parser VersionId
 versionId = label (threeBit VersionId) "version ID"
@@ -66,7 +69,25 @@ chunkPrefixedWith expected = flip label "chunk" . try $ do
   replicateM 4 bit
 
 subPackets :: Parser [Packet]
-subPackets = undefined
+subPackets = do
+  lt <- lengthType
+  case lt of
+    NumPackets -> do
+      n <- fixedWidthBinary 11
+      replicateM n packet
+    BitLength -> do
+      n <- fixedWidthBinary 15
+      bs <- replicateM n bit
+      pure $ case parse (many packet) "nested packet" bs of
+        Left e -> error $ show e
+        Right ps -> ps
+
+lengthType :: Parser LengthType
+lengthType = do
+  b <- bit
+  pure $ case b of
+    Zero -> BitLength
+    One -> NumPackets
 
 charToBit :: Char -> Bit
 charToBit '0' = Zero
@@ -77,16 +98,20 @@ hexToBits c = map (boolToBit . testBit (digitToInt c)) [3, 2, 1, 0]
   where boolToBit False = Zero
         boolToBit True = One
 
-type Input = [String]
+type Input = Packet
 
-part1 :: Input -> ()
-part1 = const ()
+part1 :: Input -> VersionId
+part1 (Packet (Versioned v contents)) = v + case contents of
+                                              LiteralPacket _ -> 0
+                                              OperatorPacket _ subPackets -> sum . map part1 $ subPackets
 
 part2 :: Input -> ()
 part2 = const ()
 
 prepare :: String -> Input
-prepare = lines
+prepare text = case parse packet "stdin" . (>>= hexToBits) . filter (/= '\n') $ text of
+  Left e -> error (show e)
+  Right p -> p
 
 main :: IO ()
 main = readFile "input.txt" >>= print . (part1 &&& part2) . prepare
