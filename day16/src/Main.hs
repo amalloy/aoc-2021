@@ -30,25 +30,22 @@ fromBinary = foldl' nextBit 0
         nextBit acc One = 2 * acc + 1
 
 packet :: Parser Packet
-packet = label (Packet <$> versioned packetContents) "packet"
+packet = Packet <$> versioned packetContents <?> "packet"
 
 versioned :: Parser a -> Parser (Versioned a)
 versioned p = Versioned <$> versionId <*> p
 
 fixedWidthBinary :: Int -> Parser Val
-fixedWidthBinary n = fromBinary <$> replicateM n bit
-
-threeBit :: (Val -> a) -> Parser a
-threeBit f = label (f <$> fixedWidthBinary 3) "three bits"
+fixedWidthBinary n = fromBinary <$> replicateM n bit <?> show n ++ "-bit binary number"
 
 versionId :: Parser VersionId
-versionId = label (threeBit VersionId) "version ID"
+versionId = VersionId <$> fixedWidthBinary 3 <?> "version ID"
 
 packetType :: Parser PacketType
-packetType = label (threeBit PacketType) "packet type"
+packetType = PacketType <$> fixedWidthBinary 3 <?> "packet type"
 
 bit :: Parser Bit
-bit = label anyToken "bit"
+bit = anyToken <?> "bit"
 
 packetContents :: Parser PacketContents
 packetContents = do
@@ -65,7 +62,7 @@ literal = flip label "literal" $ do
   pure . Literal . fromBinary $ prefix ++ suffix
 
 chunkPrefixedWith :: Bit -> Parser [Bit]
-chunkPrefixedWith expected = flip label "chunk" . try $ do
+chunkPrefixedWith expected = flip label ("chunk prefixed with " ++ show expected) . try $ do
   header <- bit
   guard $ header == expected
   replicateM 4 bit
