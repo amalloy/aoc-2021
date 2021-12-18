@@ -3,6 +3,7 @@
 module Main where
 
 import Data.Bits (testBit)
+import Data.Bool (bool)
 import Data.Char (digitToInt)
 import Data.List (foldl')
 import Control.Monad (guard, replicateM)
@@ -11,18 +12,19 @@ import Control.Arrow ((&&&))
 
 import Text.Parsec
 
+type Val = Integer
 data Bit = Zero | One deriving (Show, Eq)
-newtype VersionId = VersionId Int deriving (Show, Num)
-newtype PacketType = PacketType Int deriving (Show, Num, Eq)
+newtype VersionId = VersionId Val deriving (Show, Num)
+newtype PacketType = PacketType Val deriving (Show, Num, Eq)
 data LengthType = BitLength | NumPackets deriving (Show)
-newtype Literal = Literal Int deriving (Show, Num)
+newtype Literal = Literal Val deriving (Show, Num)
 data Versioned a = Versioned VersionId a deriving (Show)
 data PacketContents = LiteralPacket Literal | OperatorPacket PacketType [Packet] deriving (Show)
 newtype Packet = Packet (Versioned PacketContents) deriving (Show)
 
 type Parser a = Parsec [Bit] () a
 
-fromBinary :: [Bit] -> Int
+fromBinary :: [Bit] -> Val
 fromBinary = foldl' nextBit 0
   where nextBit acc Zero = 2 * acc
         nextBit acc One = 2 * acc + 1
@@ -33,10 +35,10 @@ packet = label (Packet <$> versioned packetContents) "packet"
 versioned :: Parser a -> Parser (Versioned a)
 versioned p = Versioned <$> versionId <*> p
 
-fixedWidthBinary :: Int -> Parser Int
+fixedWidthBinary :: Int -> Parser Val
 fixedWidthBinary n = fromBinary <$> replicateM n bit
 
-threeBit :: (Int -> a) -> Parser a
+threeBit :: (Val -> a) -> Parser a
 threeBit f = label (f <$> fixedWidthBinary 3) "three bits"
 
 versionId :: Parser VersionId
@@ -74,10 +76,10 @@ subPackets = do
   case lt of
     NumPackets -> do
       n <- fixedWidthBinary 11
-      replicateM n packet
+      replicateM (fromIntegral n) packet
     BitLength -> do
       n <- fixedWidthBinary 15
-      bs <- replicateM n bit
+      bs <- replicateM (fromIntegral n) bit
       pure $ case parse (many packet) "nested packet" bs of
         Left e -> error $ show e
         Right ps -> ps
@@ -89,26 +91,40 @@ lengthType = do
     Zero -> BitLength
     One -> NumPackets
 
-charToBit :: Char -> Bit
-charToBit '0' = Zero
-charToBit '1' = One
-
 hexToBits :: Char -> [Bit]
 hexToBits c = map (boolToBit . testBit (digitToInt c)) [3, 2, 1, 0]
   where boolToBit False = Zero
         boolToBit True = One
 
-type Input = Packet
+foldPacket :: Packet -> Val
+foldPacket (Packet (Versioned _ contents)) = case contents of
+  LiteralPacket (Literal v) -> v
+  OperatorPacket (PacketType op) packets ->
+    apply op (map foldPacket packets)
 
-part1 :: Input -> VersionId
+apply :: Val -> [Val] -> Val
+apply 0 = sum
+apply 1 = product
+apply 2 = minimum
+apply 3 = maximum
+apply 5 = comparison (>)
+apply 6 = comparison (<)
+apply 7 = comparison (==)
+apply n = error $ "Unknown operation " ++ show n
+
+comparison :: (Val -> Val -> Bool) -> [Val] -> Val
+comparison f [a, b] = bool 0 1 $ f a b
+comparison f xs = error $ "Expected exactly two packets, but got " ++ show xs
+
+part1 :: Packet -> VersionId
 part1 (Packet (Versioned v contents)) = v + case contents of
                                               LiteralPacket _ -> 0
                                               OperatorPacket _ subPackets -> sum . map part1 $ subPackets
 
-part2 :: Input -> ()
-part2 = const ()
+part2 :: Packet -> Val
+part2 = foldPacket
 
-prepare :: String -> Input
+prepare :: String -> Packet
 prepare text = case parse packet "stdin" . (>>= hexToBits) . filter (/= '\n') $ text of
   Left e -> error (show e)
   Right p -> p
