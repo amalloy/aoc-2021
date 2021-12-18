@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, TemplateHaskell, TypeFamilies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Main where
@@ -11,6 +12,8 @@ import Control.Monad (guard, replicateM)
 import Control.Arrow ((&&&))
 
 import Text.Parsec
+import Data.Functor.Foldable (cata)
+import Data.Functor.Foldable.TH (makeBaseFunctor)
 
 type Val = Integer
 data Bit = Zero | One deriving (Show, Eq)
@@ -18,9 +21,8 @@ newtype VersionId = VersionId Val deriving (Show, Num)
 newtype PacketType = PacketType Val deriving (Show, Num, Eq)
 data LengthType = BitLength | NumPackets deriving (Show)
 newtype Literal = Literal Val deriving (Show, Num)
-data Versioned a = Versioned VersionId a deriving (Show)
-data PacketContents = LiteralPacket Literal | OperatorPacket PacketType [Packet] deriving (Show)
-newtype Packet = Packet (Versioned PacketContents) deriving (Show)
+data Packet = LiteralPacket VersionId Literal | OperatorPacket VersionId PacketType [Packet] deriving (Show)
+makeBaseFunctor ''Packet
 
 type Parser a = Parsec [Bit] () a
 
@@ -30,10 +32,13 @@ fromBinary = foldl' nextBit 0
         nextBit acc One = 2 * acc + 1
 
 packet :: Parser Packet
-packet = Packet <$> versioned packetContents <?> "packet"
-
-versioned :: Parser a -> Parser (Versioned a)
-versioned p = Versioned <$> versionId <*> p
+packet = flip label "packet" $ do
+  v <- versionId
+  t <- packetType
+  if t == literalPacketType
+    then LiteralPacket v <$> literal
+    else OperatorPacket v t <$> subPackets
+  where literalPacketType = 4
 
 fixedWidthBinary :: Int -> Parser Val
 fixedWidthBinary n = fromBinary <$> replicateM n bit <?> show n ++ "-bit binary number"
@@ -46,14 +51,6 @@ packetType = PacketType <$> fixedWidthBinary 3 <?> "packet type"
 
 bit :: Parser Bit
 bit = anyToken <?> "bit"
-
-packetContents :: Parser PacketContents
-packetContents = do
-  t <- packetType
-  if t == literalPacketType
-    then LiteralPacket <$> literal
-    else OperatorPacket t <$> subPackets
-  where literalPacketType = 4
 
 literal :: Parser Literal
 literal = flip label "literal" $ do
@@ -93,33 +90,25 @@ hexToBits c = map (boolToBit . testBit (digitToInt c)) [3, 2, 1, 0]
   where boolToBit False = Zero
         boolToBit True = One
 
-foldPacket :: Packet -> Val
-foldPacket (Packet (Versioned _ contents)) = case contents of
-  LiteralPacket (Literal v) -> v
-  OperatorPacket (PacketType op) packets ->
-    apply op (map foldPacket packets)
-
-apply :: Val -> [Val] -> Val
-apply 0 = sum
-apply 1 = product
-apply 2 = minimum
-apply 3 = maximum
-apply 5 = comparison (>)
-apply 6 = comparison (<)
-apply 7 = comparison (==)
-apply n = error $ "Unknown operation " ++ show n
-
-comparison :: (Val -> Val -> Bool) -> [Val] -> Val
-comparison f [a, b] = bool 0 1 $ f a b
-comparison f xs = error $ "Expected exactly two packets, but got " ++ show xs
-
 part1 :: Packet -> VersionId
-part1 (Packet (Versioned v contents)) = v + case contents of
-                                              LiteralPacket _ -> 0
-                                              OperatorPacket _ subPackets -> sum . map part1 $ subPackets
+part1 = cata go
+  where go (LiteralPacketF ver _val) = ver
+        go (OperatorPacketF ver _type subPackets) = ver + sum subPackets
 
 part2 :: Packet -> Val
-part2 = foldPacket
+part2 = cata go
+  where go (LiteralPacketF _version (Literal v)) = v
+        go (OperatorPacketF _version (PacketType op) packets) = apply op packets
+        apply 0 = sum
+        apply 1 = product
+        apply 2 = minimum
+        apply 3 = maximum
+        apply 5 = comparison (>)
+        apply 6 = comparison (<)
+        apply 7 = comparison (==)
+        apply n = error $ "Unknown operation " ++ show n
+        comparison f [a, b] = bool 0 1 $ f a b
+        comparison f xs = error $ "Expected exactly two packets, but got " ++ show xs
 
 prepare :: String -> Packet
 prepare text = case parse packet "stdin" . (>>= hexToBits) . filter (/= '\n') $ text of
